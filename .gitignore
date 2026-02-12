@@ -23,3 +23,8 @@ __debug*
 /fleet-monitor
 ./fleet-monitor
 .DS_Store
+
+# custom
+*.pdf
+*.txt
+device-simulator-mac-arm64
