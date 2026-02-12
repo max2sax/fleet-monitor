@@ -2,25 +2,13 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
+	"github.com/max2sax/fleet-monitor/dto"
 	"github.com/max2sax/fleet-monitor/storage"
 )
-
-type Heartbeat struct {
-	SentAt time.Time `json:"sent_at"`
-}
-
-type DeviceStatsUpload struct {
-	SentAt     time.Time `json:"sent_at"`
-	UploadTime int64     `json:"upload_time"`
-}
-
-type DeviceStatsDownload struct {
-	AvgUploadTime string  `json:"avg_upload_time"` // returned as a time duration string. Eg: 5m10s
-	Uptime        float64 `json:"uptime"`          // Uptime as a percentage. eg: 98.999
-}
 
 type ErrorResponse struct {
 	Msg string `json:"msg"`
@@ -54,16 +42,33 @@ func (a *API) Start() error {
 }
 
 func (a *API) heartbeatHandler(w http.ResponseWriter, r *http.Request) {
-	var req Heartbeat
+	deviceId := r.PathValue("device_id")
+	if deviceId == "" {
+		http.Error(w, "Device ID required", http.StatusBadRequest)
+		return
+	}
+	var req dto.DeviceHeartbeat
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// TODO: call storage layer to update device heartbeat
+	timeNow := time.Now().UTC().Unix()
+	update := dto.DeviceStatUpdate{
+		DeviceId:      deviceId,
+		HeartbeatTime: &timeNow,
+	}
 	// if device is not found then return a 404 with ErrorResponse and msg missing
 	// if there is some other error return a 500 with ErrorResponse indicating error
-	// room := a.storage.CreateRoom(req.Name, req.Description)
+	err := a.storage.UpdateDeviceStats(&update)
+	if errors.Is(err, &dto.ErrorNotFound{}) {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "unable to load device stats", http.StatusInternalServerError)
+		return
+	}
 	// w.Header().Set("Content-Type", "application/json")
 	// json.NewEncoder(w).Encode(room)
 	w.WriteHeader(http.StatusNoContent)
@@ -75,6 +80,30 @@ func (a *API) uploadDeviceStats(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Device ID required", http.StatusBadRequest)
 		return
 	}
+	var req dto.DeviceStatsUpload
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	update := dto.DeviceStatUpdate{
+		DeviceId:       deviceId,
+		UploadDuration: &req.UploadTime,
+	}
+	// if device is not found then return a 404 with ErrorResponse and msg missing
+	// if there is some other error return a 500 with ErrorResponse indicating error
+	err := a.storage.UpdateDeviceStats(&update)
+	if errors.Is(err, &dto.ErrorNotFound{}) {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "unable to load device stats", http.StatusInternalServerError)
+		return
+	}
+	// w.Header().Set("Content-Type", "application/json")
+	// json.NewEncoder(w).Encode(room)
+	w.WriteHeader(http.StatusNoContent)
 
 	// TODO: call storage layer to update device stats
 	// if device is not found then return a 404 with ErrorResponse and msg missing
@@ -91,15 +120,19 @@ func (a *API) getDeviceStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: call storage layer to update device stats
+	// TODO:
 	// if device is not found then return a 404 with ErrorResponse and msg missing
 	// if there is some other error return a 500 with ErrorResponse indicating error
-	room, err := a.storage.GetDevice(deviceId)
-	if err != nil {
+	dev, err := a.storage.GetDeviceStats(deviceId)
+	if errors.Is(err, &dto.ErrorNotFound{}) {
 		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		http.Error(w, "unable to load device stats", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(room)
+	json.NewEncoder(w).Encode(dev)
 }

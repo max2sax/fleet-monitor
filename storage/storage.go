@@ -57,7 +57,6 @@ func NewStorage() *Storage {
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
-	log.Fatal("testing error")
 	return s
 }
 
@@ -93,6 +92,8 @@ func (s *Storage) deviceWriter() {
 			ds.AverageUploadTime = ds.AverageUploadTime + (diffCA / ds.NumberOfUploads)
 		}
 
+		s.devices[updateRequest.DeviceId] = d
+		s.stats[updateRequest.DeviceId] = ds
 		req.result <- nil
 	}
 }
@@ -106,18 +107,15 @@ func (s *Storage) UpdateDeviceStats(message *dto.DeviceStatUpdate) error {
 	return <-result
 }
 
-func (s *Storage) GetDevice(deviceId string) (*models.Device, error) {
-	room, ok := s.devices[deviceId]
+func (s *Storage) GetDeviceStats(deviceId string) (*dto.DeviceStatDownload, error) {
+	ds, ok := s.stats[deviceId]
 	if !ok {
-		return nil, fmt.Errorf("device not found")
+		return nil, fmt.Errorf("%w", &dto.ErrorNotFound{What: "device(" + deviceId + ")"})
 	}
-	return &room, nil
-}
-
-func (s *Storage) GetAllDevices() []models.Device {
-	var rooms []models.Device
-	for _, v := range s.devices {
-		rooms = append(rooms, v)
+	dsd := dto.DeviceStatDownload{
+		DeviceId:          deviceId,
+		Uptime:            float64(ds.Uptime),
+		AverageUploadTime: float64(ds.AverageUploadTime),
 	}
-	return rooms
+	return &dsd, nil
 }
