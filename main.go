@@ -18,12 +18,12 @@ func main() {
 	}
 
 	// Initialize API
-	chatAPI := api.NewAPI(store, server).
+	deviceAPI := api.NewAPI(store, server).
 		RegisterRoutes()
 
 	// Start server
 	fmt.Println("Server starting on :6733")
-	if err := chatAPI.Start(); err != nil {
+	if err := deviceAPI.Start(); err != nil {
 		fmt.Printf("Server error: %v\n", err)
 	}
 }

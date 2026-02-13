@@ -17,7 +17,6 @@ type messageWriteRequest struct {
 }
 
 type Storage struct {
-	devices         map[string]models.Device      // map[string]*models.Room
 	stats           map[string]models.DeviceStats // map[string][]models.Message
 	deviceWriteChan chan messageWriteRequest
 }
@@ -28,7 +27,6 @@ func NewStorage() *Storage {
 	}
 	go s.deviceWriter()
 	// init devices
-	s.devices = make(map[string]models.Device)
 	s.stats = make(map[string]models.DeviceStats)
 
 	// read csv file with devices
@@ -45,11 +43,9 @@ func NewStorage() *Storage {
 	// 4. Iterate through the file line by line
 	for scanner.Scan() {
 		id := scanner.Text() // Get the current line as a string
-		nowt := time.Now().UTC()
-		s.devices[id] = models.Device{
-			ID:        id,
-			CreatedAt: nowt,
-			UpdatedAt: nowt,
+		fmt.Println("loading device: " + id)
+		s.stats[id] = models.DeviceStats{
+			DeviceID: id,
 		}
 	}
 
@@ -63,36 +59,28 @@ func NewStorage() *Storage {
 func (s *Storage) deviceWriter() {
 	for req := range s.deviceWriteChan {
 		updateRequest := req.message
-		d, ok := s.devices[updateRequest.DeviceId]
-		if !ok {
-			req.result <- fmt.Errorf("device not found")
-			continue
-		}
+
 		ds, ok := s.stats[updateRequest.DeviceId]
 		if !ok {
-			req.result <- fmt.Errorf("stats not found")
+			err := dto.ErrorNotFound{What: "device(" + updateRequest.DeviceId + ")"}
+			req.result <- &err
 			continue
 		}
-		//TODO: Update device stats with incoming data
-		nowTime := time.Now().UTC()
-		d.UpdatedAt = nowTime
 		if updateRequest.HeartbeatTime != nil {
+			heartbeatSeconds := *updateRequest.HeartbeatTime
 			ds.NumberOfHeartBeats++
-			if ds.LastHeartBeat == 0 {
-				ds.LastHeartBeat = nowTime.Unix() * 60
+			if ds.FirstHeartBeat == 0 {
+				ds.FirstHeartBeat = heartbeatSeconds
 			}
-			ds.CumulativeHeartBeatTime = (nowTime.Unix() * 60) - ds.LastHeartBeat
-			ds.LastHeartBeat = nowTime.Unix() * 60
-			//calculate the diff
+			ds.CumulativeHeartBeatMinutes = ((heartbeatSeconds) - ds.FirstHeartBeat) / 60
 		}
 		if updateRequest.UploadDuration != nil {
 			// calculate new average
 			ds.NumberOfUploads++
-			diffCA := *updateRequest.UploadDuration - ds.AverageUploadTime
-			ds.AverageUploadTime = ds.AverageUploadTime + (diffCA / ds.NumberOfUploads)
+			diffCA := *updateRequest.UploadDuration - ds.AverageUploadTimeNS
+			ds.AverageUploadTimeNS = ds.AverageUploadTimeNS + (diffCA / ds.NumberOfUploads)
 		}
 
-		s.devices[updateRequest.DeviceId] = d
 		s.stats[updateRequest.DeviceId] = ds
 		req.result <- nil
 	}
@@ -112,10 +100,12 @@ func (s *Storage) GetDeviceStats(deviceId string) (*dto.DeviceStatDownload, erro
 	if !ok {
 		return nil, fmt.Errorf("%w", &dto.ErrorNotFound{What: "device(" + deviceId + ")"})
 	}
+	dur := time.Duration(ds.AverageUploadTimeNS)
+	uptime := (float64(ds.NumberOfHeartBeats) / float64(ds.CumulativeHeartBeatMinutes)) * 100.0
 	dsd := dto.DeviceStatDownload{
 		DeviceId:          deviceId,
-		Uptime:            float64(ds.Uptime),
-		AverageUploadTime: float64(ds.AverageUploadTime),
+		Uptime:            uptime,
+		AverageUploadTime: dur.String(),
 	}
 	return &dsd, nil
 }

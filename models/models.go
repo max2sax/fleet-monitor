@@ -11,12 +11,11 @@ type Device struct {
 }
 
 type DeviceStats struct {
-	DeviceID                string `json:"deviceId"`
-	AverageUploadTime       int64  `json:"avg_upload_time"`
-	NumberOfUploads         int64
-	NumberOfHeartBeats      int64
-	FirstHeartBeat          int64
-	LastHeartBeat           int64
-	CumulativeHeartBeatTime int64
-	Uptime                  int64
+	DeviceID                   string `json:"deviceId"`
+	AverageUploadTimeNS        int64  `json:"avg_upload_time"`
+	NumberOfUploads            int64
+	NumberOfHeartBeats         int64
+	FirstHeartBeat             int64
+	LastHeartBeat              int64
+	CumulativeHeartBeatMinutes int64
 }
