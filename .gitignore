@@ -26,5 +26,4 @@ __debug*
 
 # custom
 *.pdf
-*.txt
 device-simulator-mac-arm64
