@@ -336,15 +336,25 @@ See the [LICENSE](LICENSE) file for details.
 ## Questions and Answers
 
 - How long did you spend working on the problem?
-I spent around 4 hours total
+```text
+I spent around 4 hours total writing code, researching, testing and debugging
+```
 - What did you find to be the most difficult part?
-The most difficult part was coming up with a way to prevent race conditions when updating the data. The solution works, but it wouldn't be scalable because each request to update stats is blocked on writing to the map. This is fine at smaller scales
-because the data storage is fast and there are not many devices or metrics being calculated.
+```text
+The most difficult part was coming up with a way to prevent race conditions when updating the data.
+The solution works, but it wouldn't be scalable because each request to update stats is blocked on writing to the map.
+This is fine at smaller scales because the data storage is fast and there are not many devices or metrics being calculated.
+```
 - How would you modify your data model or code to account for more kinds of metrics?
-I would separate out the statistics calculations from the saving. Ideally, saving the data is just writing it to the data store.
+```text
+I would want separate out the statistics calculations from the saving. Ideally, saving the data is just writing it to the data store. I'm not sure if that
+would be possible since the new metrics depend on old metrics. I would also want to handle out of order heartbeats correctly.
 If the number of metrics is larger, I would create separate maps to store different metrics. I would also figure out how to
-not block each request on writing so that different devices can save metrics concurrently. We still want to prevent a single
-from reading/writing metrics concurrently.
+not block each request on writing so that different devices can save metrics concurrently. We still want to prevent multiple goroutines/handlers
+from reading/writing metrics for a single device. Doing it this way drastically decreases data storage - we don't have to store every previous record.
+But we do lose historical data, and it complicates the storage logic some.
+```
 - Discuss your solution’s runtime complexity
-Runtime complexity is pretty much constant since it's a simple lookup in the map to get the specific device. Calculations being
-are also constant time.
+```text
+Runtime complexity is pretty much constant since it's a simple lookup in the map to get the specific device. Calculations being are also constant time.
+```
