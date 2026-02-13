@@ -29,27 +29,21 @@ func NewStorage() *Storage {
 	// init devices
 	s.stats = make(map[string]models.DeviceStats)
 
-	// read csv file with devices
 	file, err := os.Open("devices.csv")
 	if err != nil {
 		log.Fatal(err)
 	}
-	// 2. Ensure the file is closed when the function returns
 	defer file.Close()
 
-	// 3. Create a scanner for the file
 	scanner := bufio.NewScanner(file)
-
-	// 4. Iterate through the file line by line
 	for scanner.Scan() {
-		id := scanner.Text() // Get the current line as a string
+		id := scanner.Text()
 		fmt.Println("loading device: " + id)
 		s.stats[id] = models.DeviceStats{
 			DeviceID: id,
 		}
 	}
 
-	// 5. Check for errors encountered during scanning
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
