@@ -358,3 +358,7 @@ But we do lose historical data, and it complicates the storage logic some.
 ```text
 Runtime complexity is pretty much constant since it's a simple lookup in the map to get the specific device. Calculations being are also constant time.
 ```
+
+## Some ideas for improvements and future stability
+
+- "accept interfaces, return structs": Abstract the storage layer, add a service layer that. Storage layer returns a struct that implements the StoreMetrics interface and RetreiveMetrics interface. The service layer accepts a StoreMetrics interface and RetreiveMetrics interface (or a combined one). Then main/bootstrap creates the storage engine that implements the interfaces and attaches it to the api.
