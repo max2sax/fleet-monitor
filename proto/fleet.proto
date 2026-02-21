@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package fleet;
+
+option go_package = "github.com/max2sax/fleet-monitor/grpc/pb";
+
+import "google/protobuf/timestamp.proto";
+
+service FleetMonitor {
+  rpc SendHeartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc UploadStats(UploadStatsRequest) returns (UploadStatsResponse);
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+}
+
+message HeartbeatRequest {
+  string device_id = 1;
+  google.protobuf.Timestamp sent_at = 2;
+}
+
+message HeartbeatResponse {
+  string message = 1;
+}
+
+message UploadStatsRequest {
+  string device_id = 1;
+  int64 upload_time = 2;
+}
+
+message UploadStatsResponse {
+  string message = 1;
+}
+
+message GetStatsRequest {
+  string device_id = 1;
+}
+
+message GetStatsResponse {
+  string device_id = 1;
+  string avg_upload_time = 2;
+  double uptime = 3;
+}
+
+message Error {
+  string code = 1;
+  string message = 2;
+}
